@@ -6,11 +6,11 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github SamyB2/Benchmark-IRIF))
 
-(authors "Author Name")
+(authors "SamyB2")
 
-(maintainers "Maintainer Name")
+(maintainers "SamyB2")
 
 (license LICENSE)
 
@@ -18,8 +18,8 @@
 
 (package
  (name systems_generation)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "System generation for verfification based on various parameters")
+ (description "Check the README file for more details")
  (depends ocaml dune)
  (tags
   (topics "to describe" your project)))
