@@ -1,0 +1,203 @@
+/* functions */
+
+/* return the index of the last task in the array */
+/* cannot return -1 as it is called by the scheduler only after an insertion */
+
+int inf_size (tab_core tab[ht]) {
+    int i := 0;
+
+    while (tab[i].id != -1) {i++;}
+    return i-1;
+}
+
+/* add task to array */
+/* i+1 is upper bounded by core_1_nb -1 (index of last task in the worst case) */
+
+void add_to_array (tab_core &tab[ht], int id, int pr) {
+    int i := inf_size(tab);
+
+    tab[i+1].id := id;
+    tab[i+1].pr := pr;
+}
+
+/* remove ended task from table (queue behavior) */
+
+void shift (tab_core &tab[ht]) {
+    int i := 0;
+
+    while (tab[i+1].id != -1) {
+        tab[i] := tab[i+1];
+        i++;
+    }
+    /* there is one less task in the array now */
+    tab[i].id := -1;
+    tab[i].pr := -1;
+
+    return;
+}
+
+/* sort elements (of tasks arriving at the same time) */
+/* classical insertion sort on one array portion */
+
+void id_sort (tab_core &tab[ht], int left, int right) {
+    int i := left + 1;
+
+    while (i <= right) {
+        tab_core temp := tab[i];
+        int j := i-1;
+        while (j >= left && temp.pr > tab[j].pr) {
+            tab[j+1] := tab[j];
+            j--;
+        }
+        tab[j+1] = temp;
+        i++;
+    }
+    return;
+}
+
+/* sort blocks of tasks arriving at different times (priority sort only) */
+
+void pr_sort (tab_core &tab[ht], int s, int left, int right) {
+
+    /* some weird stuff in UPPAAL made me write painful things here */
+
+    if (s < left) {
+        int i := s;
+        int j := s;
+        int r := s;
+        int k := left;
+
+        tab_core temp[ht];
+
+        while (j < left && k <= right) {
+
+            /* copy blocks already sorted before the latest arrival of task group to the temp array */
+
+            while (j < left && tab[j].pr >= tab[k].pr) {
+                temp[i] := tab[j];
+                i++;
+                j++;
+            }
+
+            /* copy blocks of sorted tasks arrived latest to the temp array */
+
+            if (j < left) {
+                while (k <= right && tab[j].pr < tab[k].pr) {
+                    temp[i] := tab[k];
+                    i++;
+                    k++;
+                }
+            }
+        }
+
+        /* if the remaining blocks are of tasks that arrived earlier, copy them to temp array */
+
+        while (j < left) {
+            temp[i] := tab[j];
+            i++;
+            j++;
+        }
+
+        /* if the remaining blocks are of tasks that arrived latest, do nothing (they are already in the right place) */
+
+        /* copy the (relevant portion) of the temp array to the original array (had to introduce a new variable r because of a spurious UPPAAL behavior linked to initialization with a for loop) */
+
+        for (r := s; r < i; r++) {tab[r] := temp[r];}
+    }
+    return;
+}
+
+/* sorting function when a lower priority task is interrupted */
+
+void pr_sort_2 (tab_core &tab[ht]) {
+
+    /* lower priority task is in first slot */
+
+    tab_core temp := tab[0];
+
+    int i := 1;
+    int j;
+
+    /* look for the last task with higher priority */
+    /* this task is guaranteed to exist (because we are interrupting task at first slot) */
+
+    while (temp.pr < tab[i].pr) {i++;}
+
+    /* shift all tasks left to i to the left */
+
+    for (j := 1; j<i; j++) {
+        tab[j-1] := tab[j];
+    }
+
+    /* place the interrupted task in the right slot */
+
+    tab[i-1] := temp;
+
+    return;
+}
+
+
+/* release task after shifting */
+
+void release (tab_core &tab[ht], bool &b[ht]) {
+    if (tab[0].id != -1) {b[tab[0].id] := true;}
+
+    return;
+}
+
+/* processes */
+process Scheduler() {
+int l_array := 0;
+int r_array := ht - 1;
+state
+    S0,
+    start,
+    L0,
+    L1,
+    L2,
+    wait,
+    rel1,
+    rel2,
+    rel3,
+    L3;
+commit
+    S0,
+    L0,
+    L1,
+    L2,
+    rel1,
+    rel2,
+    rel3,
+    L3;
+init start;
+trans
+    S0 -> start { guard tab[0].id == -1; },
+    S0 -> start { guard tab[0].id != -1; sync urg[tab[0].id]!; },
+    S0 -> L0 {guard tab[0].id != -1; sync insert?;},
+    start -> S0 { sync ter?; assign busy[tab[0].id] := false,
+shift(tab),
+release(tab, busy); },
+    L2 -> start { guard tab[1].pr <= tab[0].pr; sync procede!; },
+    L0 -> L0 { sync insert?; },
+    wait -> rel3 { sync ter?; assign busy[tab[0].id] := false,
+shift(tab),
+busy[tab[0].id] := true; },
+    rel3 -> start { sync urg[tab[0].id]!; },
+    wait -> rel2 { sync concede?; assign busy[tab[0].id] := false,
+pr_sort_2(tab),
+busy[tab[0].id] := true; },
+    rel2 -> start { sync urg[tab[0].id]!; },
+    L3 -> L3 { sync insert?; },
+    L3 -> wait { sync procede!; assign r_array := inf_size(tab),
+id_sort(tab, l_array, r_array),
+pr_sort(tab, 1, l_array, r_array); },
+    wait -> L3 { sync insert?; assign l_array := inf_size(tab); },
+    L2 -> wait { guard tab[1].pr > tab[0].pr; sync procede!; },
+    L1 -> L2 { guard busy[tab[0].id]; sync procede!; assign pr_sort(tab,1,l_array,r_array); },
+    L1 -> rel1 { guard !busy[tab[0].id]; sync procede!; assign pr_sort(tab,0,l_array,r_array),
+busy[tab[0].id] := true; },
+    rel1 -> start { sync urg[tab[0].id]!; },
+    L0 -> L1 { sync procede!; assign r_array := inf_size(tab),
+id_sort(tab, l_array, r_array); },
+    start -> L0 { sync insert?; assign l_array := inf_size(tab); };
+}

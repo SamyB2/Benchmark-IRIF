@@ -1,0 +1,13 @@
+(ocamllex
+ (modules lexer))
+
+(menhir
+  (modules parser)
+  (infer true)
+  (flags --dump))
+
+(library
+ (name sy_to_in_format)
+ (modules lexer parser) 
+ (libraries ast)
+)

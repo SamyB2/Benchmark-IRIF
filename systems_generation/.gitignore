@@ -1,0 +1,7 @@
+_build
+sag_files/*
+uppaal_files/*
+system_files/*
+!sag_files/.gitkeep
+!uppaal_files/.gitkeep
+!system_files/.gitkeep

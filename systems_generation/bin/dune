@@ -1,0 +1,13 @@
+(executable
+ (public_name systems_generation)
+ (name main)
+ (modules main)
+ (libraries ast generator translator) 
+ )
+
+(executable
+ (public_name system_translation)
+ (name main2)
+ (modules main2)
+ (libraries translator sy_to_in_format generator) 
+ )

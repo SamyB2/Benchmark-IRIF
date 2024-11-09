@@ -1,0 +1,5 @@
+(library
+ (name translator)
+ (modules queries translation write_out) 
+ (libraries ast)
+)

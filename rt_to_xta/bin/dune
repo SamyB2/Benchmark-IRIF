@@ -1,0 +1,11 @@
+(executable
+ (public_name rt_to_xta)
+ (name main)
+ (libraries rt_to_xta)
+ (preprocess (pps ppx_deriving.std))
+ (modules main ast lexer parser xta))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))

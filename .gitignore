@@ -1,0 +1,8 @@
+generate
+translate
+np-schedulability-analysis
+uppaal-5.1.0-beta5-linux64
+fhz_aeic-jsa
+scrypt/*.info
+scrypt/tmp*
+rt_to_xta/_build
